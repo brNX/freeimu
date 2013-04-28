@@ -48,8 +48,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define FREEIMU_DEVELOPER "Fabio Varesano - varesano.net"
 
-#if F_CPU == 16000000L
-  #define FREEIMU_FREQ "16 MHz"
+#if F_CPU == 50000000L
+  #define FREEIMU_FREQ "50 MHz"
 #elif F_CPU == 8000000L
   #define FREEIMU_FREQ "8 MHz"
 #endif

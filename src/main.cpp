@@ -13,6 +13,7 @@ extern "C" {
 #include "driverlib/interrupt.h"
 #include "driverlib/i2c.h"
 #include "driverlib/rom.h"
+#include "driverlib/rom_map.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
 #include "driverlib/gpio.h"
@@ -21,9 +22,12 @@ extern "C" {
 #include "driverlib/uart.h"
 #include "utils/uartstdio.h"
 #include "utils/ustdlib.h"
+#include <stdint.h>
 //#include "calibration.h"
 
 #define SYSTICKS_PER_SECOND     1000
+  
+unsigned long ulClockMS=0;
 
 static unsigned long timingDelay = 0;
 unsigned long milliSec = 0;
@@ -34,24 +38,19 @@ int decimalOf(float val)
 	return retval;
 }
 
-void timingDelayDecrement(void)
-{
-	if (timingDelay != 0x00)
-	{
-		timingDelay--;
-	}
-}
-
 void delayMSec(unsigned long msec)
 {
-	timingDelay = msec;
-	while(timingDelay);
+	MAP_SysCtlDelay(ulClockMS*msec);
+}
+
+void delayuSec(unsigned long usec)
+{
+	MAP_SysCtlDelay((ulClockMS/1000)*usec);
 }
 
 void SysTickHandler(void)
 {
 
-	timingDelayDecrement();
 	milliSec++;
 
 }
@@ -69,21 +68,21 @@ void InitConsole(void)
 	// Enable GPIO port A which is used for UART0 pins.
 	// TODO: change this to whichever GPIO port you are using.
 	//
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+	MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
 
 	//
 	// Configure the pin muxing for UART0 functions on port A0 and A1.
 	// This step is not necessary if your part does not support pin muxing.
 	// TODO: change this to select the port/pin you are using.
 	//
-	ROM_GPIOPinConfigure(GPIO_PA0_U0RX);
-	ROM_GPIOPinConfigure(GPIO_PA1_U0TX);
+	//MAP_GPIOPinConfigure(GPIO_PA0_U0RX); //not needed on lm3s1776
+	//MAP_GPIOPinConfigure(GPIO_PA1_U0TX); //not needed on lm3s1776
 
 	//
 	// Select the alternate (UART) function for these pins.
 	// TODO: change this to select the port/pin you are using.
 	//
-	ROM_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+	MAP_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
 
 	//
 	// Initialize the UART for console I/O.
@@ -100,27 +99,24 @@ void InitI2C(void)
 	// be used.
 	//
 
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+	MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
 
 	//
 	// The I2C0 peripheral must be enabled before use.
 	//
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_I2C0);
+	MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_I2C0);
 
 	//
 	// Configure the pin muxing for I2C0 functions on port B2 and B3.
 	// This step is not necessary if your part does not support pin muxing.
 	//
-	ROM_GPIOPinConfigure(GPIO_PB2_I2C0SCL);
-	ROM_GPIOPinConfigure(GPIO_PB3_I2C0SDA);
-
-	//	GPIOPinTypeI2C(GPIO_PORTB_BASE, GPIO_PIN_2 | GPIO_PIN_3);
-
-	ROM_GPIOPinTypeI2C(GPIO_PORTB_BASE, GPIO_PIN_3);
-	ROM_GPIOPinTypePWM(GPIO_PORTB_BASE, GPIO_PIN_2);
+	//MAP_GPIOPinConfigure(GPIO_PB2_I2C0SCL);
+	//MAP_GPIOPinConfigure(GPIO_PB3_I2C0SDA);
 
 
-	ROM_I2CMasterEnable(I2C0_MASTER_BASE);
+	MAP_GPIOPinTypeI2C(GPIO_PORTB_BASE, GPIO_PIN_2 | GPIO_PIN_3);
+	
+	MAP_I2CMasterInitExpClk(I2C0_MASTER_BASE,MAP_SysCtlClockGet(),true);  //false = 100khz , true = 400khz
 }
 
 //*****************************************************************************
@@ -137,7 +133,7 @@ __error__(char *pcFilename, unsigned long ulLine)
 
 }
 
-#define F_CPU 16000000L
+#define F_CPU 50000000L
 
 #include "MS561101BA/MS561101BA.h"
 #include "HMC58X3/HMC58X3.h"
@@ -170,20 +166,21 @@ int main(void)
 	// crystal on your board.
 	//
 
-	ROM_FPULazyStackingEnable();
+	//MAP_FPULazyStackingEnable(); //Not available on lm3s1776
+	//MAP_FPUEnable();
 
-	ROM_FPUEnable();
-
-	ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-			SYSCTL_XTAL_16MHZ);
+	MAP_SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_12MHZ); //50MHz
 
 	//
 	// Enable peripherals to operate when CPU is in sleep.
 	//
-	ROM_SysCtlPeripheralClockGating(true);
+	MAP_SysCtlPeripheralClockGating(true);
 
-	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
-  EEPROMInit();
+	//MAP_SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); //No eeprom available , maybe use Using Stellaris MCUs Internal Flash Memory to Emulate EEPROM (AN01267)
+	//EEPROMInit();
+	
+	// Get the current processor clock frequency.
+	ulClockMS = MAP_SysCtlClockGet() / (3 * 1000);
 
 	InitConsole();
 
@@ -193,12 +190,12 @@ int main(void)
 	// Configure SysTick to occur 100 times per second, to use as a time
 	// reference.  Enable SysTick to generate interrupts.
 	//
-	ROM_SysTickPeriodSet(ROM_SysCtlClockGet() / SYSTICKS_PER_SECOND);
-	ROM_SysTickIntEnable();
-	ROM_SysTickEnable();
+	MAP_SysTickPeriodSet(MAP_SysCtlClockGet() / SYSTICKS_PER_SECOND);
+	MAP_SysTickIntEnable();
+	MAP_SysTickEnable();
 
 
-	ROM_I2CMasterInitExpClk(I2C0_MASTER_BASE, SysCtlClockGet(), true);
+	MAP_I2CMasterInitExpClk(I2C0_MASTER_BASE, SysCtlClockGet(), true);
 
 	FreeIMU my3IMU=FreeIMU();
 
@@ -251,7 +248,7 @@ int main(void)
 	    #ifndef CALIBRATION_H
 	    else if(cmd == 'c') {
 
-	    	const uint8_t eepromsize = sizeof(float) * 6 + sizeof(int16_t) * 6;
+	    /*	const uint8_t eepromsize = sizeof(float) * 6 + sizeof(int16_t) * 6;
 	    	int i=0, j=0;
 
 	      while(i<eepromsize) {
@@ -271,12 +268,12 @@ int main(void)
 
 	    	EEPROMProgram(pulData, 0x0, sizeof(pulData));
 
-	      my3IMU.calLoad(); // reload calibration
+	      my3IMU.calLoad(); // reload calibration*/
 
 	    } else if (cmd=='x') {
-	    	pulData[0] = 0;
+	    /*	pulData[0] = 0;
 	    	EEPROMProgram(pulData, 0x0, sizeof(unsigned long));
-	      my3IMU.calLoad(); // reload calibration
+	      my3IMU.calLoad(); // reload calibration*/
 
 	    }
 	    #endif

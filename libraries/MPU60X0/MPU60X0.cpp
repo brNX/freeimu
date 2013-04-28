@@ -3157,7 +3157,7 @@ int8_t MPU60X0::readBytes(bool useSPI, uint8_t devAddr, uint8_t regAddr, uint8_t
 	tx[0] = regAddr;
 
 	i2cWrite(devAddr, tx, 1);
-	delayMSec(1);
+	//delayMSec(1); not needed
 	count = i2cRead(devAddr, data, length);
 	return (length-count);
 }
@@ -3179,7 +3179,7 @@ int8_t MPU60X0::readWords(bool useSPI, uint8_t devAddr, uint8_t regAddr, uint8_t
 	tx[0] = regAddr;
 
 	i2cWrite(devAddr, tx, 1);
-	delayMSec(1);
+	//delayMSec(1); not needed
 	count = i2cRead(devAddr, ptr, length*2);
 
 	for (i=0; i<length*2; i+=2) {
