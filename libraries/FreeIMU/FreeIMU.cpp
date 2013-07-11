@@ -727,12 +727,32 @@ void arr3_rad_to_deg(float * arr) {
   arr[2] *= 180/M_PI;
 }
 
+/**
+ * Fast inverse square root implementation. Compatible both for 32 and 8 bit microcontrollers.
+ * @see http://en.wikipedia.org/wiki/Fast_inverse_square_root
+*/
+inline float invSqrt(float number) {
+  union {
+    float f;
+    int32_t i;
+  } y;
+
+  y.f = number;
+  y.i = 0x5f375a86 - (y.i >> 1);
+  y.f = y.f * ( 1.5f - ( number * 0.5f * y.f * y.f ) );
+  return y.f;
+}
+
+/*inline float invSqrt(float number) {
+  return 1/(sqrt(number));
+}*/
+
 
 /**
  * Fast inverse square root implementation
  * @see http://en.wikipedia.org/wiki/Fast_inverse_square_root
 */
-float invSqrt(float number) {
+/*float invSqrt(float number) {
   volatile long i;
   volatile float x, y;
   volatile const float f = 1.5F;
@@ -744,7 +764,7 @@ float invSqrt(float number) {
   y = * ( float * ) &i;
   y = y * ( f - ( x * y * y ) );
   return y;
-}
+}*/
 
 
 
